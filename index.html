@@ -1,0 +1,2152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>遇太美3D模型展示</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body { 
+      background: transparent; 
+      overflow: hidden;
+      touch-action: none;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      padding-top: 60px;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(45deg, #1a1a1a, #2c3e50, #2c3e50, #1a1a1a);
+      background-size: 400% 400%;
+      animation: gradientBG 15s ease infinite;
+    }
+    
+    @keyframes gradientBG {
+      0% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+      100% {
+        background-position: 0% 50%;
+      }
+    }
+    
+    html {
+      background: transparent;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+    
+    canvas { 
+      display: block;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: -1;
+    }
+    
+    /* 改进加载信息样式 */
+    #LoadingInfo {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      color: white;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+      opacity: 1;
+      transition: opacity 0.5s ease;
+    }
+    
+    #LoadingInfo.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    
+    .loading-status {
+      font-size: 18px;
+      margin-bottom: 25px;
+      text-align: center;
+    }
+    
+    .progress-container {
+      width: 80%;
+      max-width: 300px;
+      background: rgba(255, 255, 255, 0.1);
+      height: 8px;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 15px;
+    }
+    
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3a8ee6, #56CCF2);
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+    
+    .loading-message {
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 5px;
+    }
+    
+    .loading-spinner {
+      width: 50px;
+      height: 50px;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    
+    .loading-spinner:before,
+    .loading-spinner:after {
+      content: '';
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background-color: #3a8ee6;
+      opacity: 0.6;
+      top: 0;
+      left: 0;
+      animation: sk-bounce 2.0s infinite ease-in-out;
+    }
+    
+    .loading-spinner:after {
+      animation-delay: -1.0s;
+    }
+    
+    @keyframes sk-bounce {
+      0%, 100% { transform: scale(0.0); }
+      50% { transform: scale(1.0); }
+    }
+    
+    /* 标签页样式 - 改为底部滑动式 */
+    .tabs-container {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.85);
+      z-index: 100;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.3);
+      border-top-left-radius: 25px;
+      border-top-right-radius: 25px;
+      overflow: hidden;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      max-height: 80vh;
+    }
+    
+    .tabs-container.active {
+      transform: translateY(0);
+    }
+    
+    .tabs {
+      display: flex;
+      justify-content: center;
+      list-style: none;
+      margin: 0;
+      padding: 15px 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      background: rgba(0, 0, 0, 0.3);
+    }
+    
+    .tab-item {
+      color: white;
+      padding: 15px 30px;
+      text-align: center;
+      cursor: pointer;
+      flex: 0 0 auto;
+      min-width: 140px;
+      transition: all 0.3s ease;
+      position: relative;
+      font-size: 16px;
+      letter-spacing: 0.5px;
+      border-radius: 20px;
+      margin: 0 5px;
+    }
+    
+    .tab-item.active {
+      background: rgba(255, 255, 255, 0.15);
+      font-weight: 600;
+    }
+    
+    .tab-item.active::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40%;
+      height: 3px;
+      background: linear-gradient(90deg, #3a8ee6, #56CCF2);
+      border-radius: 3px;
+    }
+    
+    .tab-content-wrapper {
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      display: flex;
+      width: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .tab-content {
+      flex: 0 0 100%;
+      scroll-snap-align: start;
+      padding: 15px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    /* 模型网格样式 */
+    .model-grid {
+      display: flex;
+      flex-wrap: nowrap;
+      justify-content: flex-start;
+      gap: 20px;
+      padding: 25px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-snap-type: x proximity;
+      scroll-behavior: smooth;
+      padding-bottom: 30px;
+    }
+    
+    .model-item {
+      width: 160px;
+      flex: 0 0 auto;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 20px;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      scroll-snap-align: start;
+      display: block;
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+    }
+    
+    .model-item:hover {
+      transform: translateY(-5px);
+      background: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .model-item.active {
+      background: rgba(58, 142, 230, 0.3);
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+      border: 1px solid rgba(58, 142, 230, 0.5);
+    }
+    
+    .model-item img {
+      width: 100%;
+      height: 120px;
+      object-fit: cover;
+      border-radius: 15px;
+      margin-bottom: 15px;
+      transition: transform 0.3s ease;
+    }
+    
+    .model-item:hover img {
+      transform: scale(1.05);
+    }
+    
+    .model-item p {
+      margin: 0;
+      font-size: 15px;
+      color: white;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+    
+    /* 控制按钮样式 */
+    .control-buttons {
+      position: absolute;
+      right: 10px;
+      bottom: 0;
+      z-index: 101;
+      display: flex;
+      align-items: center;
+      height: 100%;
+    }
+    
+    .control-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 4px;
+      background: #3a8ee6;
+      border: none;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      transition: all 0.3s;
+      margin-right: 10px;
+    }
+    
+    .control-btn:hover {
+      background: #2c6cb9;
+    }
+    
+    .control-btn.active {
+      background: #2c6cb9;
+    }
+    
+    .control-btn svg {
+      width: 24px;
+      height: 24px;
+      fill: white;
+    }
+
+    /* 修改贴图选择器样式，使其从底部滑出 */
+    .texture-selector {
+      position: fixed;
+      bottom: 0; /* 更改为底部显示 */
+      left: 0;
+      width: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      z-index: 140;
+      transform: translateY(100%); /* 从底部滑出 */
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border-top-left-radius: 20px; /* 顶部圆角 */
+      border-top-right-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.3); /* 阴影向上 */
+      max-height: 70vh; /* 增加最大高度 */
+      display: flex;
+      flex-direction: column;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+
+    .texture-selector.active {
+      transform: translateY(0);
+    }
+
+    .texture-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .texture-header h3 {
+      color: white;
+      margin: 0;
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+    }
+
+    .close-btn {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 28px;
+      cursor: pointer;
+      padding: 5px;
+      transition: transform 0.3s ease;
+      position: absolute;
+      right: 20px;
+      top: 15px;
+      z-index: 10;
+    }
+
+    .close-btn:hover {
+      transform: rotate(90deg);
+    }
+
+    .texture-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .texture-item {
+      width: 100px;
+      height: 100px;
+      border-radius: 15px;
+      overflow: hidden;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      position: relative;
+    }
+
+    .texture-item:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .texture-item.active {
+      border-color: #3a8ee6;
+      transform: scale(1.05);
+      box-shadow: 0 8px 20px rgba(58, 142, 230, 0.3);
+    }
+
+    .texture-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+
+    .texture-item:hover img {
+      transform: scale(1.1);
+    }
+    
+    .texture-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 5px;
+      text-align: center;
+      font-size: 12px;
+      transform: translateY(100%);
+      transition: transform 0.3s ease;
+    }
+    
+    .texture-item:hover .texture-label {
+      transform: translateY(0);
+    }
+
+    /* 浮动按钮组样式 */
+    .float-btns-container {
+      position: fixed;
+      bottom: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      flex-direction: row;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      z-index: 200;
+    }
+
+    .left-btn, .right-btn {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .float-btn {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: #3a8ee6;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 8px rgba(0, 0, 0, 0.4);
+      cursor: pointer;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      border: none;
+    }
+
+    .texture-btn {
+      background: #8e3a6e; /* 紫色系 */
+    }
+
+    .texture-btn:hover {
+      transform: scale(1.1);
+      background: #6e2a50;
+    }
+
+    .tabs-btn:hover {
+      transform: scale(1.1);
+      background: #2c6cb9;
+    }
+
+    .float-btn.tabs-open {
+      background: #e74c3c; /* 红色背景，表示关闭动作 */
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+    }
+
+    .float-btn.tabs-open:hover {
+      transform: scale(1.1);
+      background: #c0392b;
+    }
+
+    .btn-label {
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 6px 10px;
+      border-radius: 16px;
+      font-size: 12px;
+      white-space: nowrap;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      transform: translateY(10px);
+      transition: all 0.3s ease;
+      pointer-events: none;
+      position: absolute;
+      bottom: 70px;
+    }
+
+    .left-btn:hover .btn-label,
+    .right-btn:hover .btn-label {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .float-btn svg {
+      width: 24px;
+      height: 24px;
+      fill: white;
+    }
+
+    /* 修改顶部导航栏样式 */
+    .top-nav-container {
+      position: fixed;
+      top: 20px;
+      left: 0;
+      right: 0;
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 20px;
+      z-index: 200;
+      background: transparent;
+      gap: 8px;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      padding: 8px 20px;
+      border-radius: 50px;
+      background: rgba(0, 0, 0, 0.3);
+      color: white;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      min-width: 120px;
+      justify-content: center;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .nav-item.active {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+
+    .nav-item span {
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.5px;
+      margin-right: 8px;
+    }
+
+    .nav-item svg {
+      width: 18px;
+      height: 18px;
+      fill: white;
+      transition: transform 0.3s ease;
+    }
+
+    .nav-item:hover svg {
+      transform: scale(1.1);
+    }
+
+    .texture-nav.active {
+      background: rgba(142, 58, 110, 0.3);
+    }
+
+    .models-nav.active {
+      background: rgba(58, 142, 230, 0.3);
+    }
+
+    /* 添加导航项激活时的动画效果 */
+    @keyframes navPulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.02); }
+      100% { transform: scale(1); }
+    }
+
+    .nav-item.active {
+      animation: navPulse 0.3s ease;
+    }
+
+    /* 添加导航项点击时的反馈效果 */
+    .nav-item:active {
+      transform: scale(0.95);
+    }
+
+    /* 修改天空盒样式，使其覆盖全屏 */
+    .sky {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: -1;
+    }
+
+    /* 添加联系表单样式 */
+    .contact-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .contact-form {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(30, 30, 30, 0.9);
+      padding: 30px;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 500px;
+      color: white;
+    }
+
+    .contact-form h2 {
+      margin-bottom: 20px;
+      text-align: center;
+      color: #3a8ee6;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #fff;
+    }
+
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 8px;
+      color: white;
+      font-size: 16px;
+    }
+
+    .form-group textarea {
+      height: 120px;
+      resize: none;
+    }
+
+    .submit-btn {
+      width: 100%;
+      padding: 12px;
+      background: #3a8ee6;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .submit-btn:hover {
+      background: #2c6cb9;
+    }
+
+    .close-modal {
+      position: absolute;
+      top: 15px;
+      right: 15px;
+      background: none;
+      border: none;
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+    }
+
+    .error-message {
+      color: #ff4444;
+      font-size: 14px;
+      margin-top: 5px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<!-- 加载信息显示 -->
+<div id="LoadingInfo">
+  <div class="loading-spinner"></div>
+  <div class="loading-status">正在准备加载模型</div>
+  <div class="progress-container">
+    <div class="progress-bar" id="progressBar"></div>
+  </div>
+  <div class="loading-message" id="loadingMessage">初始化中...</div>
+</div>
+
+<!-- 修改为顶部导航栏 -->
+<div class="top-nav-container">
+  <div class="nav-item texture-nav" id="textureNavBtn">
+    <span>设计稿</span>
+   </div>
+  <div class="nav-item models-nav" id="modelsNavBtn">
+    <span>模型选择</span>
+     </div>
+  <div class="nav-item contact-nav" id="contactNavBtn">
+    <span>联系我们</span>
+    </div>
+</div>
+
+<!-- 贴图选择器 -->
+<div class="texture-selector" id="textureSelector">
+  <div class="texture-header">
+    <h3>设计稿</h3>
+    <button class="close-btn" id="closeTextureSelector">×</button>
+  </div>
+  <div class="texture-grid" id="textureGrid">
+    <!-- 贴图项将由JavaScript动态生成 -->
+  </div>
+</div>
+
+<!-- 添加联系表单弹窗 -->
+<div class="contact-modal" id="contactModal">
+  <div class="contact-form">
+    <button class="close-modal" id="closeContactModal">×</button>
+    <h2>联系我们</h2>
+    <form id="contactForm">
+      <div class="form-group">
+        <label for="name">姓名</label>
+        <input type="text" id="name" name="name" required>
+        <div class="error-message" id="nameError"></div>
+      </div>
+      <div class="form-group">
+        <label for="phone">电话</label>
+        <input type="tel" id="phone" name="phone" required>
+        <div class="error-message" id="phoneError"></div>
+      </div>
+      <div class="form-group">
+        <label for="content">内容</label>
+        <textarea id="content" name="content" required></textarea>
+        <div class="error-message" id="contentError"></div>
+      </div>
+      <button type="submit" class="submit-btn">提交</button>
+    </form>
+  </div>
+</div>
+
+<!-- 使用已下载的JS文件 -->
+<script src="js/three.min.js"></script>
+<script src="js/OrbitControls-fixed.js"></script>
+<script src="js/DRACOLoader.js"></script>
+<script src="js/GLTFLoader.js"></script>
+<script src="js/jszip.min.js"></script>
+<script src="js/axios.min.js"></script>
+
+<!-- 标签页容器 - 移到底部显示 -->
+<div class="tabs-container">
+  <div class="tabs-handle" id="tabsHandle"></div>
+  <ul class="tabs">
+    <li class="tab-item active" data-tab="tab1">盒子模型</li>
+    <li class="tab-item" data-tab="tab2">瓶子模型</li>
+    <!-- 控制按钮 -->
+    <div class="control-buttons">
+    
+    </div>
+  </ul>
+  
+  <div class="tab-content-wrapper">
+  <div id="tab1" class="tab-content active">
+    <div class="model-grid">
+        <div class="model-item" data-model="sjamjy2.zip" data-type="box">
+        <img src="images/textures/bottles/box_paper_1.jpg" alt="天地盒">
+        <p>天地盒</p>
+      </div>
+        <div class="model-item" data-model="无标题3.zip" data-type="box">
+          <img src="images/box2.jpg" alt="双插盒">
+          <p>双插盒</p>
+        </div>
+        <div class="model-item" data-model="无标题2.zip" data-type="box">
+          <img src="images/box3.jpg" alt="扣底盒">
+          <p>扣底盒</p>
+        </div>
+        <div class="model-item" data-model="无标题.zip" data-type="box">
+          <img src="images/box4.jpg" alt="飞机盒">
+          <p>飞机盒</p>
+        </div>
+        <div class="model-item" data-model="drawer-box.zip" data-type="box">
+        <img src="images/box5.jpg" alt="抽屉盒">
+        <p>抽屉盒</p>
+      </div>
+        <div class="model-item" data-model="flip-top-box.zip" data-type="box">
+        <img src="images/box6.jpg" alt="翻盖盒">
+        <p>翻盖盒</p>
+      </div>
+    </div>
+  </div>
+    
+  <div id="tab2" class="tab-content">
+    <div class="model-grid">
+        <div class="model-item" data-model="glass-bottle.zip" data-type="bottle">
+          <img src="images/bottle1.jpg" alt="玻璃瓶">
+          <p>玻璃瓶</p>
+      </div>
+        <div class="model-item" data-model="ceramic-bottle.zip" data-type="bottle">
+          <img src="images/bottle2.jpg" alt="陶瓷瓶">
+          <p>陶瓷瓶</p>
+      </div>
+        <div class="model-item" data-model="plastic-bottle.zip" data-type="bottle">
+          <img src="images/bottle3.jpg" alt="塑料瓶">
+          <p>塑料瓶</p>
+        </div>
+        <div class="model-item" data-model="metal-bottle.zip" data-type="bottle">
+          <img src="images/bottle4.jpg" alt="金属瓶">
+          <p>金属瓶</p>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+</div>
+
+<script>
+  // 声明全局变量
+  let scene, camera, renderer, controls;
+  let boxModelsGroup, bottleModelsGroup;
+  let pointLights = []; // 添加全局点光源数组
+  let isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  let lastTime = 0; // 添加时间跟踪
+  let frameCount = 0; // 添加帧计数
+  let lastFpsUpdate = 0; // 添加FPS更新时间跟踪
+  let targetFps = isMobile ? 120 : 120; // 设置目标帧率
+  let frameTime = 1000 / targetFps; // 计算每帧时间
+  let modelGroups = {
+    box: {
+      group: null,
+      currentModel: null,
+      currentTexture: null,
+      currentTextureId: null,
+      currentTextureSrc: null
+    },
+    bottle: {
+      group: null,
+      currentModel: null,
+      currentTexture: null,
+      currentTextureId: null,
+      currentTextureSrc: null
+    }
+  };
+  
+  // 定义模型和贴图的映射关系
+  const modelTextures = {
+    'sjamjy2.zip': {
+      name: '天地盒',
+      textures: [
+        { id: 'texture1', name: '木纹', src: 'images/textures/boxes/box_paper_1.jpg' },
+        { id: 'texture2', name: '大理石', src: 'images/textures/boxes/marble.jpg' },
+        { id: 'texture3', name: '金属', src: 'images/textures/boxes/metal.jpg' }
+      ]
+    },
+    '无标题3.zip': {
+      name: '双插盒',
+      textures: [
+        { id: 'texture1', name: '纸纹', src: 'images/textures/boxes/paper.jpg' },
+        { id: 'texture2', name: '布纹', src: 'images/textures/boxes/fabric.jpg' },
+        { id: 'texture3', name: '皮革', src: 'images/textures/boxes/leather.jpg' }
+      ]
+    },
+    '无标题2.zip': {
+      name: '扣底盒',
+      textures: [
+        { id: 'texture1', name: '磨砂', src: 'images/textures/boxes/matte.jpg' },
+        { id: 'texture2', name: '亮面', src: 'images/textures/boxes/glossy.jpg' },
+        { id: 'texture3', name: '珠光', src: 'images/textures/boxes/pearl.jpg' }
+      ]
+    },
+    '无标题.zip': {
+      name: '飞机盒',
+      textures: [
+        { id: 'texture1', name: '卡纸', src: 'images/textures/boxes/cardboard.jpg' },
+        { id: 'texture2', name: '瓦楞', src: 'images/textures/boxes/corrugated.jpg' },
+        { id: 'texture3', name: '特种纸', src: 'images/textures/boxes/special.jpg' }
+      ]
+    },
+    'drawer-box.zip': {
+      name: '抽屉盒',
+      textures: [
+        { id: 'texture1', name: '实木', src: 'images/textures/boxes/solidwood.jpg' },
+        { id: 'texture2', name: '竹纹', src: 'images/textures/boxes/bamboo.jpg' },
+        { id: 'texture3', name: '仿古', src: 'images/textures/boxes/antique.jpg' }
+      ]
+    },
+    'flip-top-box.zip': {
+      name: '翻盖盒',
+      textures: [
+        { id: 'texture1', name: '亚克力', src: 'images/textures/boxes/acrylic.jpg' },
+        { id: 'texture2', name: '玻璃', src: 'images/textures/boxes/glass.jpg' },
+        { id: 'texture3', name: '陶瓷', src: 'images/textures/boxes/ceramic.jpg' }
+      ]
+    },
+    'glass-bottle.zip': {
+      name: '玻璃瓶',
+      textures: [
+        { id: 'texture1', name: '透明', src: 'images/textures/bottles/clear.jpg' },
+        { id: 'texture2', name: '磨砂', src: 'images/textures/bottles/frosted.jpg' },
+        { id: 'texture3', name: '彩色', src: 'images/textures/bottles/colored.jpg' }
+      ]
+    },
+    'ceramic-bottle.zip': {
+      name: '陶瓷瓶',
+      textures: [
+        { id: 'texture1', name: '青瓷', src: 'images/textures/bottles/celadon.jpg' },
+        { id: 'texture2', name: '白瓷', src: 'images/textures/bottles/white.jpg' },
+        { id: 'texture3', name: '彩瓷', src: 'images/textures/bottles/colorful.jpg' }
+      ]
+    },
+    'plastic-bottle.zip': {
+      name: '塑料瓶',
+      textures: [
+        { id: 'texture1', name: '透明', src: 'images/textures/bottles/transparent.jpg' },
+        { id: 'texture2', name: '磨砂', src: 'images/textures/bottles/matte.jpg' },
+        { id: 'texture3', name: '珠光', src: 'images/textures/bottles/pearl.jpg' }
+      ]
+    },
+    'metal-bottle.zip': {
+      name: '金属瓶',
+      textures: [
+        { id: 'texture1', name: '不锈钢', src: 'images/textures/bottles/stainless.jpg' },
+        { id: 'texture2', name: '铜', src: 'images/textures/bottles/copper.jpg' },
+        { id: 'texture3', name: '铝', src: 'images/textures/bottles/aluminum.jpg' }
+      ]
+    }
+  };
+  
+  let defaultModels = {
+    box: 'models/7.zip',
+    bottle: 'models/sjamjy2.zip'
+  };
+
+  // 等待所有资源加载完成
+  window.addEventListener('load', function() {
+    // 初始化场景
+    function initScene() {
+      scene = new THREE.Scene();
+      
+      // 初始化相机
+      const isLandscape = window.innerWidth > window.innerHeight;
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 1.5, 3);
+      
+      // 初始化渲染器
+      renderer = new THREE.WebGLRenderer({ 
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance',
+        premultipliedAlpha: false,
+        stencil: false,
+        depth: true,
+        preserveDrawingBuffer: false
+      });
+      
+      // 根据设备类型设置不同的渲染参数
+      if (isMobile) {
+        // 移动设备优化渲染
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5)); // 降低像素比
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.physicallyCorrectLights = true;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+        renderer.autoClear = true;
+        renderer.sortObjects = true;
+        renderer.info.autoReset = false;
+      } else {
+        // 桌面设备高质量渲染
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.physicallyCorrectLights = true;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        renderer.outputEncoding = THREE.sRGBEncoding;
+      }
+      
+      renderer.setClearColor(0x000000, 0);
+      
+      document.body.appendChild(renderer.domElement);
+      
+      // 创建场景背景 - 优化移动端性能
+      const bgGeometry = new THREE.SphereGeometry(50, 16, 16); // 减少几何体面数
+      const bgMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+          time: { value: 0 },
+          resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) }
+        },
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform float time;
+          uniform vec2 resolution;
+          varying vec2 vUv;
+          
+          void main() {
+            vec2 position = vUv * 2.0 - 1.0;
+            float d = length(position);
+            vec3 color1 = vec3(0.1, 0.1, 0.15);
+            vec3 color2 = vec3(0.17, 0.24, 0.31);
+            vec3 color = mix(color2, color1, d);
+            float alpha = smoothstep(1.0, 0.0, d);
+            gl_FragColor = vec4(color, 1.0);
+          }
+        `,
+        side: THREE.BackSide,
+        transparent: true
+      });
+      
+      const background = new THREE.Mesh(bgGeometry, bgMaterial);
+      scene.add(background);
+      
+      // 优化光照系统
+      const ambientLight = new THREE.AmbientLight(0xffffff, 2.0); // 增加环境光强度
+      scene.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 3.0); // 增加主光源强度
+      directionalLight.position.set(1, 1, 1);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.mapSize.width = isMobile ? 1024 : 2048;
+      directionalLight.shadow.mapSize.height = isMobile ? 1024 : 2048;
+      directionalLight.shadow.camera.near = 0.5;
+      directionalLight.shadow.camera.far = 50;
+      directionalLight.shadow.camera.left = -10;
+      directionalLight.shadow.camera.right = 10;
+      directionalLight.shadow.camera.top = 10;
+      directionalLight.shadow.camera.bottom = -10;
+      scene.add(directionalLight);
+      
+      // 减少点光源数量但增加强度
+      pointLights = [];
+      const lightCount = isMobile ? 6 : 12;
+      const radius = 4;
+      
+      for (let i = 0; i < lightCount; i++) {
+        const angle = (i / lightCount) * Math.PI * 2;
+        const x = Math.cos(angle) * radius;
+        const z = Math.sin(angle) * radius;
+        
+        const pointLight = new THREE.PointLight(0xffffff, 3.0, radius); // 增加点光源强度
+        pointLight.position.set(x, 0, z);
+        scene.add(pointLight);
+        pointLights.push(pointLight);
+        
+        if (!isMobile) {
+          const pointLightHigh = new THREE.PointLight(0xffffff, 2.5, radius); // 增加辅助点光源强度
+          pointLightHigh.position.set(x, 1.5, z);
+          scene.add(pointLightHigh);
+          pointLights.push(pointLightHigh);
+        }
+      }
+      
+      // 初始化控制器
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = isMobile ? 0.2 : 0.05;
+      controls.screenSpacePanning = false;
+      controls.enableZoom = true;
+      controls.maxDistance = 10;
+      controls.minDistance = 1;
+      controls.autoRotate = true;
+      controls.autoRotateSpeed = isMobile ? 1.0 : 3.0;
+      controls.target.set(0, 0, 0);
+      controls.enablePan = true;
+      controls.panSpeed = isMobile ? 0.5 : 0.5;
+      controls.rotateSpeed = isMobile ? 0.5 : 0.5;
+      controls.zoomSpeed = isMobile ? 0.5 : 0.5;
+
+      // 优化移动端触摸事件
+      if (isMobile) {
+        let touchStartTime = 0;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let touchVelocityX = 0;
+        let touchVelocityY = 0;
+        let lastTouchTime = 0;
+        let isMomentumScrolling = false;
+        let momentumTimeout;
+        let lastUpdateTime = 0;
+        const updateInterval = 1000 / 30; // 限制更新频率为30fps
+
+        function handleTouchStart(event) {
+          touchStartTime = performance.now();
+          lastTouchX = event.touches[0].clientX;
+          lastTouchY = event.touches[0].clientY;
+          lastTouchTime = touchStartTime;
+          isMomentumScrolling = false;
+          clearTimeout(momentumTimeout);
+          controls.autoRotate = false;
+        }
+
+        function handleTouchMove(event) {
+          const currentTime = performance.now();
+          if (currentTime - lastUpdateTime < updateInterval) return;
+          lastUpdateTime = currentTime;
+
+          const deltaTime = currentTime - lastTouchTime;
+          
+          if (deltaTime > 0) {
+            const touchX = event.touches[0].clientX;
+            const touchY = event.touches[0].clientY;
+            
+            touchVelocityX = (touchX - lastTouchX) / deltaTime;
+            touchVelocityY = (touchY - lastTouchY) / deltaTime;
+            
+            lastTouchX = touchX;
+            lastTouchY = touchY;
+            lastTouchTime = currentTime;
+          }
+          
+          isMomentumScrolling = true;
+        }
+
+        function handleTouchEnd() {
+          const touchDuration = performance.now() - touchStartTime;
+          
+          if (touchDuration < 300 && Math.abs(touchVelocityX) > 0.1) {
+            let momentumX = touchVelocityX;
+            let momentumY = touchVelocityY;
+            let lastMomentumTime = performance.now();
+            
+            function applyMomentum() {
+              const currentTime = performance.now();
+              if (currentTime - lastUpdateTime < updateInterval) {
+                requestAnimationFrame(applyMomentum);
+                return;
+              }
+              lastUpdateTime = currentTime;
+
+              const deltaTime = currentTime - lastMomentumTime;
+              lastMomentumTime = currentTime;
+              
+              controls.rotateLeft(momentumX * 0.01);
+              controls.rotateUp(momentumY * 0.01);
+              
+              momentumX *= 0.95;
+              momentumY *= 0.95;
+              
+              if (Math.abs(momentumX) > 0.001 || Math.abs(momentumY) > 0.001) {
+                requestAnimationFrame(applyMomentum);
+              } else {
+                isMomentumScrolling = false;
+                momentumTimeout = setTimeout(() => {
+                  if (!isMomentumScrolling) {
+                    controls.autoRotate = true;
+                  }
+                }, 2000);
+              }
+            }
+            
+            applyMomentum();
+          } else {
+            momentumTimeout = setTimeout(() => {
+              if (!isMomentumScrolling) {
+                controls.autoRotate = true;
+              }
+            }, 2000);
+          }
+        }
+
+        renderer.domElement.addEventListener('touchstart', handleTouchStart, { passive: true });
+        renderer.domElement.addEventListener('touchmove', handleTouchMove, { passive: true });
+        renderer.domElement.addEventListener('touchend', handleTouchEnd, { passive: true });
+      }
+
+      // 添加用户交互事件监听
+      let isUserInteracting = false;
+      let autoRotateTimeout;
+
+      function startUserInteraction() {
+        isUserInteracting = true;
+        controls.autoRotate = false;
+        clearTimeout(autoRotateTimeout);
+      }
+
+      function endUserInteraction() {
+        isUserInteracting = false;
+        autoRotateTimeout = setTimeout(() => {
+          if (!isUserInteracting) {
+            controls.autoRotate = true;
+          }
+        }, 2000);
+      }
+
+      // 监听鼠标事件
+      renderer.domElement.addEventListener('mousedown', startUserInteraction);
+      renderer.domElement.addEventListener('mousemove', startUserInteraction);
+      renderer.domElement.addEventListener('mouseup', endUserInteraction);
+      renderer.domElement.addEventListener('mouseleave', endUserInteraction);
+
+      // 监听触摸事件
+      renderer.domElement.addEventListener('touchstart', startUserInteraction, { passive: true });
+      renderer.domElement.addEventListener('touchmove', startUserInteraction, { passive: true });
+      renderer.domElement.addEventListener('touchend', endUserInteraction, { passive: true });
+      
+      // 初始化模型组
+      boxModelsGroup = new THREE.Group();
+      bottleModelsGroup = new THREE.Group();
+      scene.add(boxModelsGroup);
+      scene.add(bottleModelsGroup);
+      bottleModelsGroup.visible = false;
+      
+      // 更新全局变量
+      modelGroups.box.group = boxModelsGroup;
+      modelGroups.bottle.group = bottleModelsGroup;
+      
+      console.log('场景初始化完成');
+    }
+
+    function animate(currentTime) {
+      requestAnimationFrame(animate);
+      
+      const deltaTime = currentTime - lastTime;
+      
+      if (deltaTime < frameTime) {
+        return;
+      }
+      
+      lastTime = currentTime;
+      
+      // 优化移动端的更新频率
+      if (isMobile) {
+        if (currentTime - lastFpsUpdate >= 1000) {
+          frameCount = 0;
+          lastFpsUpdate = currentTime;
+        }
+        frameCount++;
+      } else {
+        frameCount++;
+        if (currentTime - lastFpsUpdate >= 1000) {
+          console.log('FPS:', frameCount);
+          frameCount = 0;
+          lastFpsUpdate = currentTime;
+        }
+      }
+      
+      // 优化背景更新
+      if (!isMobile && scene && scene.children) {
+        const backgroundMesh = scene.children.find(child => child instanceof THREE.Mesh && child.material instanceof THREE.ShaderMaterial);
+        if (backgroundMesh && backgroundMesh.material.uniforms) {
+          backgroundMesh.material.uniforms.time.value = currentTime * 0.001;
+        }
+      }
+      
+      // 优化点光源更新
+      if (pointLights && pointLights.length > 0) {
+        const time = currentTime * (isMobile ? 0.00005 : 0.0005);
+        const radius = 5;
+        const angleStep = (Math.PI * 2) / pointLights.length;
+        pointLights.forEach((light, index) => {
+          const angle = index * angleStep + time;
+          light.position.x = Math.cos(angle) * radius;
+          light.position.z = Math.sin(angle) * radius;
+        });
+      }
+      
+      // 只在控制器有变化时更新
+      if (controls && controls.enabled) {
+        controls.update();
+      }
+      
+      // 渲染场景
+      if (renderer && scene && camera) {
+        renderer.render(scene, camera);
+      }
+    }
+
+    // 加载模型函数
+    async function loadModel(modelInfo, targetGroup) {
+      const loadingInfo = document.getElementById('LoadingInfo');
+        const loadingStatus = document.querySelector('.loading-status');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const progressBar = document.getElementById('progressBar');
+      
+      try {
+        // 显示加载状态
+        loadingStatus.textContent = '正在下载模型...';
+        loadingMessage.textContent = '准备下载模型文件';
+        console.log('开始加载模型:', modelInfo.url);
+        
+        // 下载ZIP文件
+        const response = await axios.get(modelInfo.url, {
+        responseType: 'arraybuffer',
+          onDownloadProgress: progressEvent => {
+            const percent = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            progressBar.style.width = `${percent}%`;
+            loadingMessage.textContent = `下载进度: ${percent}%`;
+          }
+        });
+        
+        // 解压ZIP文件
+        loadingStatus.textContent = '正在解压模型...';
+        loadingMessage.textContent = '处理模型数据';
+        console.log('开始解压ZIP文件');
+        
+        const zip = await JSZip.loadAsync(response.data);
+        const glbFiles = Object.keys(zip.files).filter(name => name.endsWith('.glb'));
+        
+        if (glbFiles.length === 0) {
+          throw new Error('ZIP文件中未找到GLB模型文件');
+        }
+        
+        console.log('找到GLB文件:', glbFiles[0]);
+        
+        // 加载GLB模型
+        loadingStatus.textContent = '正在加载模型...';
+        loadingMessage.textContent = '初始化3D模型';
+        
+        const gltfLoader = new THREE.GLTFLoader();
+        const dracoLoader = new THREE.DRACOLoader();
+        
+        // 设置 Draco 解码器路径
+        dracoLoader.setDecoderPath('js/');
+        dracoLoader.setDecoderConfig({ type: 'js' });
+        
+        gltfLoader.setDRACOLoader(dracoLoader);
+        
+        const glbFile = glbFiles[0];
+        const glbContent = await zip.file(glbFile).async('arraybuffer');
+        
+        // 设置资源加载器
+        gltfLoader.setResourcePath('');
+        gltfLoader.manager.onProgress = (url, itemsLoaded, itemsTotal) => {
+          const percent = Math.round((itemsLoaded / itemsTotal) * 100);
+          progressBar.style.width = `${percent}%`;
+          loadingMessage.textContent = `加载进度: ${percent}%`;
+        };
+        
+        // 加载模型
+        console.log('开始解析GLB文件');
+        const gltf = await gltfLoader.parseAsync(glbContent, '');
+        console.log('模型加载完成:', gltf);
+        
+        // 处理加载的模型
+                    const model = gltf.scene;
+        console.log('模型场景:', model);
+        
+        // 遍历模型的所有材质，设置为高质量
+        model.traverse((node) => {
+          if (node.isMesh) {
+            // 设置材质为高质量
+            if (node.material) {
+              // 基础颜色设置
+              node.material.color.set(0xffffff);
+              
+              // 增加金属感和平滑度
+              node.material.metalness = 0.8;
+              node.material.roughness = 0.1;
+              
+              // 增加自发光
+              node.material.emissive.set(0xffffff);
+              node.material.emissiveIntensity = 0.5;
+              
+              // 增加环境光遮蔽
+              node.material.aoMapIntensity = 0.8;
+              
+              // 增加反射强度
+              node.material.envMapIntensity = 2.5;
+              
+              // 更新材质
+              node.material.needsUpdate = true;
+              
+              // 设置材质类型为物理材质
+              if (node.material.type === 'MeshStandardMaterial') {
+                node.material = new THREE.MeshPhysicalMaterial({
+                  color: 0xffffff,
+                  metalness: 0.8,
+                  roughness: 0.1,
+                  clearcoat: 0.9,
+                  clearcoatRoughness: 0.1,
+                  reflectivity: 1.0,
+                  ior: 1.6,
+                  transmission: 0.0,
+                  thickness: 0.0,
+                  specularIntensity: 2.5,
+                  specularColor: 0xffffff,
+                  envMapIntensity: 2.5,
+                  sheen: 0.0,
+                  sheenRoughness: 0.0,
+                  sheenColor: 0xffffff
+                });
+              }
+            }
+          }
+        });
+        
+        // 计算模型的边界框
+                    const box = new THREE.Box3().setFromObject(model);
+                    const size = box.getSize(new THREE.Vector3());
+                    const maxDim = Math.max(size.x, size.y, size.z);
+        
+        // 根据模型大小自动计算合适的缩放比例
+        const targetSize = 2; // 目标大小（单位：米）
+        const scale = targetSize / maxDim;
+        
+        // 设置模型位置和缩放
+        model.position.copy(modelInfo.position);
+        model.scale.setScalar(scale);
+        model.rotation.y = modelInfo.rotationOffset;
+        
+        // 设置自动旋转
+        model.userData.autoRotate = true;
+        model.userData.rotateSpeed = 0.01;
+        
+        // 添加到目标组
+              targetGroup.add(model);
+        console.log('模型已添加到场景');
+        
+        // 自动调整视角
+        autoAdjustCamera(model);
+        
+        // 更新加载状态
+        loadingStatus.textContent = '加载完成';
+        loadingMessage.textContent = '模型加载成功';
+        
+        return model;
+      } catch (error) {
+        console.error('加载模型失败:', error);
+        loadingStatus.textContent = '加载失败';
+        loadingMessage.textContent = error.message || '加载模型时发生错误';
+        throw error;
+      }
+    }
+
+    function initNavigation() {
+      const tabsContainer = document.querySelector('.tabs-container');
+      const textureSelector = document.getElementById('textureSelector');
+      const textureNavBtn = document.getElementById('textureNavBtn');
+      const modelsNavBtn = document.getElementById('modelsNavBtn');
+      const closeBtn = document.getElementById('closeTextureSelector');
+      
+      // 点击贴图导航项显示贴图选择器
+      textureNavBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        
+        // 确保modelGroups已定义
+        if (typeof modelGroups === 'undefined' || !modelGroups) {
+          alert('模型尚未初始化，请稍后再试');
+          return;
+        }
+        
+        const currentModelType = modelGroups.box.group.visible ? 'box' : 'bottle';
+        const currentModel = modelGroups[currentModelType].currentModel;
+        
+        if (currentModel) {
+          // 获取当前模型的名称
+          // 关闭模型选择
+          tabsContainer.classList.remove('active');
+          modelsNavBtn.classList.remove('active');
+          
+          // 显示贴图选择器
+          textureSelector.style.display = 'flex';
+          textureSelector.style.transform = 'translateY(0)';
+          textureSelector.classList.add('active');
+          textureNavBtn.classList.add('active');
+                } else {
+          alert('请先选择一个模型');
+        }
+      });
+      
+      // 点击模型导航项显示/隐藏标签页
+      modelsNavBtn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        
+        // 关闭贴图选择器
+        textureSelector.classList.remove('active');
+        textureNavBtn.classList.remove('active');
+        textureSelector.style.display = 'none';
+        textureSelector.style.transform = 'translateY(100%)';
+        
+        // 切换模型选择器
+        tabsContainer.classList.toggle('active');
+        modelsNavBtn.classList.toggle('active');
+      });
+      
+      // 点击页面其他区域关闭所有选择器
+      document.addEventListener('click', function(event) {
+        // 检查点击是否在贴图选择器外部
+        if (!textureSelector.contains(event.target) && 
+            event.target !== textureNavBtn &&
+            !textureNavBtn.contains(event.target) &&
+            event.target !== closeBtn &&
+            !closeBtn.contains(event.target)) {
+          textureSelector.classList.remove('active');
+          textureNavBtn.classList.remove('active');
+          textureSelector.style.display = 'none';
+          textureSelector.style.transform = 'translateY(100%)';
+        }
+        
+        // 检查点击是否在标签页外部
+        if (!tabsContainer.contains(event.target) && 
+            event.target !== modelsNavBtn &&
+            !modelsNavBtn.contains(event.target)) {
+          tabsContainer.classList.remove('active');
+          modelsNavBtn.classList.remove('active');
+        }
+      });
+    }
+
+    function setupTextureSelector() {
+      const closeBtn = document.getElementById('closeTextureSelector');
+      const textureSelector = document.getElementById('textureSelector');
+      const textureNavBtn = document.getElementById('textureNavBtn');
+      
+      // 点击关闭按钮
+      closeBtn.addEventListener('click', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        console.log('Close button clicked'); // 调试日志
+        
+        textureSelector.classList.remove('active');
+        textureNavBtn.classList.remove('active');
+        
+        // 强制更新样式
+        textureSelector.style.display = 'none';
+        textureSelector.style.transform = 'translateY(100%)';
+      });
+    }
+
+    async function loadMultipleModels() {
+      const loadingInfo = document.getElementById('LoadingInfo');
+      const progressBar = document.getElementById('progressBar');
+      const loadingMessage = document.getElementById('loadingMessage');
+      const loadingStatus = document.querySelector('.loading-status');
+      
+      try {
+      // 确保加载界面显示
+      loadingInfo.classList.remove('hidden');
+      loadingStatus.textContent = '正在准备加载模型';
+      loadingMessage.textContent = '连接服务器中...';
+      
+      // 平滑进度条动画
+      let displayedProgress = 0;
+      let actualProgress = 0;
+      
+      function updateProgressBar() {
+        displayedProgress += (actualProgress - displayedProgress) * 0.1;
+        if (Math.abs(actualProgress - displayedProgress) < 0.01) {
+          displayedProgress = actualProgress;
+        }
+        
+        progressBar.style.width = `${displayedProgress}%`;
+        
+        if (displayedProgress < 100) {
+          requestAnimationFrame(updateProgressBar);
+        }
+      }
+      
+      // 开始进度条动画
+      updateProgressBar();
+
+        // 初始化场景和模型组
+        initScene();
+
+      // 默认加载第一个模型
+      await loadModelByName(defaultModels.box, 'box');
+      
+      // 初始化选项卡切换事件
+      const tabItems = document.querySelectorAll('.tab-item');
+      tabItems.forEach((item, index) => {
+        item.addEventListener('click', function() {
+          if (index === 0) { // 盒子模型
+            modelGroups.box.group.visible = true;
+            modelGroups.bottle.group.visible = false;
+            
+            if (!modelGroups.box.currentModel) {
+              loadModelByName(defaultModels.box, 'box');
+              } else {
+                // 如果模型已存在，直接调整视角
+                autoAdjustCamera(modelGroups.box.currentModel);
+            }
+          } else if (index === 1) { // 瓶子模型
+            modelGroups.box.group.visible = false;
+            modelGroups.bottle.group.visible = true;
+            
+            if (!modelGroups.bottle.currentModel) {
+              loadModelByName(defaultModels.bottle, 'bottle');
+              } else {
+                // 如果模型已存在，直接调整视角
+                autoAdjustCamera(modelGroups.bottle.currentModel);
+            }
+          }
+        });
+      });
+      
+      // 设置模型项点击事件
+      setupModelItemsClick();
+      
+        // 在模型加载完成后再添加悬浮效果
+        if (boxModelsGroup && bottleModelsGroup) {
+      addHoverEffect();
+        }
+      
+      // 延迟一下再隐藏加载界面
+      setTimeout(() => {
+        loadingInfo.classList.add('hidden');
+      }, 800);
+      } catch (error) {
+        console.error('加载模型失败:', error);
+        loadingStatus.textContent = '加载失败';
+        loadingMessage.textContent = error.message || '加载模型时发生错误';
+        
+        setTimeout(() => {
+          loadingInfo.classList.add('hidden');
+        }, 2000);
+      }
+    }
+
+    // 将autoAdjustCamera函数移到全局作用域
+    window.autoAdjustCamera = function(model) {
+      if (!model) return;
+      
+      // 计算模型的边界框
+      const box = new THREE.Box3().setFromObject(model);
+      const center = box.getCenter(new THREE.Vector3());
+      const size = box.getSize(new THREE.Vector3());
+      
+      // 计算合适的相机距离
+      const maxDim = Math.max(size.x, size.y, size.z);
+      const fov = camera.fov * (Math.PI / 180);
+      const aspect = window.innerWidth / window.innerHeight;
+      const distance = maxDim * 1.5; // 调整这个系数可以改变相机距离
+      
+      // 根据屏幕宽高比调整相机位置
+      if (aspect > 1) { // 横屏
+        camera.position.set(center.x, center.y + size.y * 0.3, center.z + distance);
+      } else { // 竖屏
+        camera.position.set(center.x, center.y + size.y * 0.2, center.z + distance * 1.2);
+      }
+      
+      camera.lookAt(center);
+      
+      // 更新控制器目标
+      controls.target.copy(center);
+      
+      // 设置控制器限制
+      controls.maxDistance = distance * 2;
+      controls.minDistance = distance * 0.5;
+      controls.minPolarAngle = 0;
+      controls.maxPolarAngle = Math.PI / 2;
+      
+      // 更新控制器
+      controls.update();
+    };
+
+    // 将loadModelByName函数移到全局作用域
+    window.loadModelByName = async function(modelName, modelType) {
+      const loadingInfo = document.getElementById('LoadingInfo');
+      const loadingStatus = document.querySelector('.loading-status');
+      const loadingMessage = document.getElementById('loadingMessage');
+      const progressBar = document.getElementById('progressBar');
+      
+      try {
+        // 显示加载界面
+        loadingInfo.classList.remove('hidden');
+        loadingStatus.textContent = '正在加载模型...';
+        loadingMessage.textContent = '准备加载模型文件';
+        
+        // 构建模型信息
+        const modelInfo = {
+          url: modelName.startsWith('/') ? modelName : 
+               (modelName.includes('/') ? modelName : `models/${modelName}`),
+          position: new THREE.Vector3(0, 0, 0),
+          scale: 1.0,
+          rotationOffset: 0
+        };
+        
+        // 根据模型类型选择目标组
+        const targetGroup = modelType === 'box' ? boxModelsGroup : bottleModelsGroup;
+        
+        // 清除当前组中的所有模型
+        while (targetGroup.children.length > 0) {
+          targetGroup.remove(targetGroup.children[0]);
+        }
+        
+        // 加载模型
+        const model = await loadModel(modelInfo, targetGroup);
+        
+        // 保存模型名称
+        model.userData.modelName = modelName;
+        
+        // 更新当前模型信息
+        modelGroups[modelType].currentModel = model;
+        modelGroups[modelType].currentTexture = null;
+        modelGroups[modelType].currentTextureId = null;
+        modelGroups[modelType].currentTextureSrc = null;
+        
+        // 设置模型可见性
+        if (modelType === 'box') {
+          boxModelsGroup.visible = true;
+          bottleModelsGroup.visible = false;
+        } else {
+          boxModelsGroup.visible = false;
+          bottleModelsGroup.visible = true;
+        }
+        
+        // 隐藏加载界面
+        setTimeout(() => {
+          loadingInfo.classList.add('hidden');
+        }, 800);
+        
+        return model;
+      } catch (error) {
+        console.error('加载模型失败:', error);
+        loadingStatus.textContent = '加载失败';
+        loadingMessage.textContent = error.message || '加载模型时发生错误';
+        
+        setTimeout(() => {
+          loadingInfo.classList.add('hidden');
+        }, 2000);
+        
+        throw error;
+      }
+    };
+
+    // 添加窗口大小改变事件监听
+    window.addEventListener('resize', function() {
+      // 更新当前显示的模型视角
+      const currentModel = modelGroups.box.group.visible ? 
+        modelGroups.box.currentModel : 
+        modelGroups.bottle.currentModel;
+      
+      if (currentModel) {
+        autoAdjustCamera(currentModel);
+      }
+    });
+
+    // 初始化所有功能
+    initScene();
+    initSwipeTabs();
+    initNavigation();
+    setupTextureSelector();
+    loadMultipleModels();
+    
+    // 开始动画循环
+    animate(performance.now());
+  });
+  
+  function initSwipeTabs() {
+    const tabItems = document.querySelectorAll('.tab-item');
+    const tabContents = document.querySelectorAll('.tab-content');
+    const tabContentWrapper = document.querySelector('.tab-content-wrapper');
+    
+    // 标签页点击切换
+    tabItems.forEach((item, index) => {
+      item.addEventListener('click', function() {
+        // 移除所有active类
+        tabItems.forEach(tab => tab.classList.remove('active'));
+        tabContents.forEach(content => content.classList.remove('active'));
+        
+        // 添加当前active类
+        this.classList.add('active');
+        tabContents[index].classList.add('active');
+        
+        // 滚动到对应内容
+        tabContentWrapper.scrollLeft = index * tabContentWrapper.offsetWidth;
+      });
+    });
+    
+    // 内容滑动切换标签
+    tabContentWrapper.addEventListener('scroll', function() {
+      const scrollPosition = this.scrollLeft;
+      const tabWidth = this.offsetWidth;
+      const selectedIndex = Math.round(scrollPosition / tabWidth);
+      
+      if (selectedIndex >= 0 && selectedIndex < tabItems.length) {
+        tabItems.forEach(tab => tab.classList.remove('active'));
+        tabContents.forEach(content => content.classList.remove('active'));
+        
+        tabItems[selectedIndex].classList.add('active');
+        tabContents[selectedIndex].classList.add('active');
+      }
+    });
+    
+    // 监听滑动结束，确保对齐
+    tabContentWrapper.addEventListener('scrollend', function() {
+      const scrollPosition = this.scrollLeft;
+      const tabWidth = this.offsetWidth;
+      const selectedIndex = Math.round(scrollPosition / tabWidth);
+      
+      // 滚动到最接近的标签页
+      this.scrollLeft = selectedIndex * tabWidth;
+    });
+    
+    // 添加触摸滑动支持
+    let startX, startY;
+    let startScrollLeft;
+    
+    tabContentWrapper.addEventListener('touchstart', function(e) {
+      startX = e.touches[0].pageX;
+      startY = e.touches[0].pageY;
+      startScrollLeft = this.scrollLeft;
+    }, { passive: true });
+    
+    tabContentWrapper.addEventListener('touchmove', function(e) {
+      if (!startX || !startY) return;
+      
+      const x = e.touches[0].pageX;
+      const y = e.touches[0].pageY;
+      
+      // 计算水平移动距离
+      const dx = startX - x;
+      
+      // 更新滚动位置
+      this.scrollLeft = startScrollLeft + dx;
+    }, { passive: true });
+    
+    tabContentWrapper.addEventListener('touchend', function() {
+      startX = null;
+      startY = null;
+    }, { passive: true });
+  }
+
+    function addHoverEffect() {
+      if (!boxModelsGroup || !bottleModelsGroup) {
+        console.warn('模型组尚未初始化，无法添加悬浮效果');
+        return;
+      }
+
+      const hoverSpeed = isMobile ? 0.0003 : 0.0005;
+      const hoverHeight = isMobile ? 0.05 : 0.1;
+      let lastTime = performance.now();
+      
+      function updateAnimation(currentTime) {
+        if (!boxModelsGroup || !bottleModelsGroup) return;
+        
+        const deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+        
+        const elapsed = currentTime;
+        const hoverY = Math.sin(elapsed * hoverSpeed) * hoverHeight;
+        
+        if (boxModelsGroup.visible) {
+          boxModelsGroup.position.y = hoverY;
+        }
+        
+        if (bottleModelsGroup.visible) {
+          bottleModelsGroup.position.y = hoverY;
+        }
+        
+        requestAnimationFrame(updateAnimation);
+      }
+      
+      updateAnimation(performance.now());
+    }
+
+    function setupModelItemsClick() {
+      const modelItems = document.querySelectorAll('.model-item');
+    const tabsContainer = document.querySelector('.tabs-container');
+    const modelsNavBtn = document.getElementById('modelsNavBtn');
+      
+      modelItems.forEach(item => {
+      item.addEventListener('click', async function() {
+          const modelName = this.getAttribute('data-model');
+          const modelType = this.getAttribute('data-type');
+          
+        // 更新默认模型配置
+          if (modelType === 'box') {
+            defaultModels.box = modelName.startsWith('/') ? modelName : 
+              (modelName.includes('/') ? modelName : `models/${modelName}`);
+          } else if (modelType === 'bottle') {
+            defaultModels.bottle = modelName.startsWith('/') ? modelName : 
+              (modelName.includes('/') ? modelName : `models/${modelName}`);
+          }
+          
+        try {
+          // 加载模型
+          const model = await loadModelByName(modelName, modelType);
+          // 自动调整视角
+          autoAdjustCamera(model);
+          
+          // 更新贴图选择器
+          if (window.updateTextureSelector) {
+            window.updateTextureSelector(modelName);
+          }
+          
+          // 关闭模型选择操作栏
+          tabsContainer.classList.remove('active');
+          modelsNavBtn.classList.remove('active');
+        } catch (error) {
+          console.error('加载模型失败:', error);
+        }
+      });
+    });
+  }
+
+  // 添加贴图选择器更新函数
+  window.updateTextureSelector = function(modelName) {
+      const textureSelector = document.getElementById('textureSelector');
+      const textureGrid = document.getElementById('textureGrid');
+    const textureHeader = document.querySelector('.texture-header h3');
+      
+    // 清空现有的贴图项
+      textureGrid.innerHTML = '';
+      
+    // 获取当前模型的贴图配置
+    const modelConfig = modelTextures[modelName];
+    if (!modelConfig) {
+      console.warn('未找到模型贴图配置:', modelName);
+      return;
+    }
+    
+    // 更新标题
+    textureHeader.textContent = `选择${modelConfig.name}贴图`;
+      
+      // 创建贴图项
+    modelConfig.textures.forEach(texture => {
+        const textureItem = document.createElement('div');
+        textureItem.className = 'texture-item';
+        textureItem.dataset.textureId = texture.id;
+        
+        const img = document.createElement('img');
+        img.src = texture.src;
+        img.alt = texture.name;
+      
+      const label = document.createElement('div');
+      label.className = 'texture-label';
+      label.textContent = texture.name;
+        
+        textureItem.appendChild(img);
+      textureItem.appendChild(label);
+        
+      // 添加点击事件
+        textureItem.addEventListener('click', function() {
+        // 移除其他项的active类
+        document.querySelectorAll('.texture-item').forEach(item => {
+          item.classList.remove('active');
+        });
+        
+        // 添加当前项的active类
+          this.classList.add('active');
+          
+        // 应用贴图
+        applyTexture(modelName, texture.id, texture.src);
+      });
+          
+      textureGrid.appendChild(textureItem);
+      });
+      
+      // 显示贴图选择器
+    textureSelector.style.display = 'flex';
+    textureSelector.style.transform = 'translateY(0)';
+      textureSelector.classList.add('active');
+  };
+
+  // 添加应用贴图的函数
+  function applyTexture(modelName, textureId, textureSrc) {
+    const currentModelType = modelGroups.box.group.visible ? 'box' : 'bottle';
+    const currentModel = modelGroups[currentModelType].currentModel;
+    
+    if (!currentModel) {
+      console.warn('没有当前模型，无法应用贴图');
+      return;
+    }
+    
+    // 创建纹理加载器
+    const textureLoader = new THREE.TextureLoader();
+      
+      // 加载贴图
+    textureLoader.load(textureSrc, function(texture) {
+      // 设置纹理翻转
+      texture.flipY = false;
+      
+      // 遍历模型的所有材质，只对名为"贴图"的部位应用贴图
+      currentModel.traverse((node) => {
+        if (node.isMesh && node.material && node.name === "贴图") {
+                // 更新材质
+          node.material.map = texture;
+          node.material.needsUpdate = true;
+          console.log('已为部位"贴图"应用新贴图');
+        }
+      });
+      
+      // 更新当前贴图信息
+      modelGroups[currentModelType].currentTexture = texture;
+      modelGroups[currentModelType].currentTextureId = textureId;
+      modelGroups[currentModelType].currentTextureSrc = textureSrc;
+    });
+  }
+
+  // 添加联系表单相关代码
+  document.addEventListener('DOMContentLoaded', function() {
+    const contactModal = document.getElementById('contactModal');
+    const contactNavBtn = document.getElementById('contactNavBtn');
+    const closeContactModal = document.getElementById('closeContactModal');
+    const contactForm = document.getElementById('contactForm');
+
+    // 显示联系表单
+    contactNavBtn.addEventListener('click', function() {
+      contactModal.style.display = 'block';
+    });
+
+    // 关闭联系表单
+    closeContactModal.addEventListener('click', function() {
+      contactModal.style.display = 'none';
+    });
+
+    // 点击模态框外部关闭
+    contactModal.addEventListener('click', function(e) {
+      if (e.target === contactModal) {
+        contactModal.style.display = 'none';
+      }
+    });
+
+    // 表单验证和提交
+    contactForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // 清除之前的错误信息
+      document.querySelectorAll('.error-message').forEach(el => {
+        el.style.display = 'none';
+      });
+
+      // 获取表单数据
+      const name = document.getElementById('name').value.trim();
+      const phone = document.getElementById('phone').value.trim();
+      const content = document.getElementById('content').value.trim();
+
+      // 验证姓名（2-20个字符，只允许中文和英文字母）
+      if (!/^[\u4e00-\u9fa5a-zA-Z]{2,20}$/.test(name)) {
+        document.getElementById('nameError').textContent = '请输入2-20个字符的姓名（仅支持中文和英文字母）';
+        document.getElementById('nameError').style.display = 'block';
+        return;
+      }
+
+      // 验证电话（中国大陆手机号）
+      if (!/^1[3-9]\d{9}$/.test(phone)) {
+        document.getElementById('phoneError').textContent = '请输入正确的手机号码';
+        document.getElementById('phoneError').style.display = 'block';
+        return;
+      }
+
+      // 验证内容（10-500个字符）
+      if (content.length < 10 || content.length > 500) {
+        document.getElementById('contentError').textContent = '请输入10-500个字符的内容';
+        document.getElementById('contentError').style.display = 'block';
+        return;
+      }
+
+      // 显示加载状态
+      const submitBtn = contactForm.querySelector('.submit-btn');
+      const originalText = submitBtn.textContent;
+      submitBtn.textContent = '提交中...';
+      submitBtn.disabled = true;
+
+      // 构建请求数据
+      const requestData = {
+        name: name,
+        phone: phone,
+        content: content
+      };
+
+      console.log('准备发送的数据:', requestData);
+
+      // 发送数据到后台
+      fetch('api/contact.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+      })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('网络响应错误');
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          alert('提交成功！我们会尽快跟您联系！');
+          contactModal.style.display = 'none';
+          contactForm.reset();
+        } else {
+          throw new Error(data.message || '提交失败');
+        }
+      })
+      .catch(error => {
+        console.error('错误详情:', error);
+        alert('提交失败：' + error.message);
+      })
+      .finally(() => {
+        // 恢复按钮状态
+        submitBtn.textContent = originalText;
+        submitBtn.disabled = false;
+      });
+    });
+  });
+</script>
+
+</body>
+</html>
